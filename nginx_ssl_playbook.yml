@@ -1,0 +1,64 @@
+- hosts: all
+  become: yes
+  vars:
+    domain_name: "fidevops.xyz"
+  tasks:
+    - name: Install NGINX and Certbot
+      apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+        state: present
+        update_cache: yes
+
+    - name: Create NGINX config for Synapse reverse proxy
+      copy:
+        dest: "/etc/nginx/sites-available/synapse"
+        content: |
+          server {
+              listen 80;
+              server_name {{ domain_name }};
+
+              location / {
+                  proxy_pass http://localhost:8008;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+    - name: Enable NGINX site
+      file:
+        src: /etc/nginx/sites-available/synapse
+        dest: /etc/nginx/sites-enabled/synapse
+        state: link
+        force: yes
+
+    - name: Remove default NGINX site if exists
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Test NGINX configuration
+      command: nginx -t
+      register: nginx_test
+      failed_when: "'successful' not in nginx_test.stderr"
+
+    - name: Reload NGINX
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Obtain and install SSL certificate with Certbot
+      shell: |
+        certbot --nginx --non-interactive --agree-tos --redirect -d {{ domain_name }} -m sofoniasmengistu@gmail.com
+      args:
+        creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+
+    - name: Ensure NGINX is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
