@@ -1,0 +1,14 @@
+terraform.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+*.log
+*.env
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+.DS_Store
+.idea/
+.vscode/
+inventory.ini

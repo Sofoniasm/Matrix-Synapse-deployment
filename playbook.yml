@@ -1,0 +1,54 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install python3-pip
+      apt:
+        name: python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install python3-docker
+      apt:
+        name: python3-docker
+        state: present
+        update_cache: yes
+
+    - name: Install Docker SDK for Python 3
+      pip:
+        name: docker
+        executable: pip3
+
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create Synapse data directory
+      file:
+        path: /opt/synapse/data
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy Matrix Synapse in Docker
+      docker_container:
+        name: synapse
+        image: matrixdotorg/synapse:latest
+        restart_policy: always
+        ports:
+          - "8008:8008"
+        env:
+          SYNAPSE_SERVER_NAME: "fidevops.xyz"
+          SYNAPSE_REPORT_STATS: "yes"
+        volumes:
+          - /opt/synapse/data:/data
